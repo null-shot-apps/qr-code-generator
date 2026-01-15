@@ -1,84 +1,173 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { generateQRCode, ErrorCorrectionLevel } from '@/lib/qr-generator';
 
-const slogans = [
-  "Turn chats into apps",
-  "Prompt. Ship. Repeat.",
-  "Build anything from a chat",
-  "Ideas → Apps, instantly",
-  "From zero to MVP in minutes",
-  "Your cofounder in the command line",
-  "Draft, iterate, deploy",
-  "Ship faster than you can type",
-  "Design in text, deliver in code",
-  "Dream it. Prompt it. Run it.",
-  "Chat-native app building",
-  "From prompt to product",
-  "One prompt, infinite apps",
-  "Stop scaffolding. Start shipping.",
-  "Prototype at the speed of thought",
-  "Make conversations executable"
-];
+export default function QRCodeGenerator() {
+  const [url, setUrl] = useState('');
+  const [qrSvg, setQrSvg] = useState('');
+  const [qrPng, setQrPng] = useState('');
+  const [format, setFormat] = useState<'svg' | 'png'>('svg');
+  const [error, setError] = useState('');
 
-export default function Landing() {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [isVisible, setIsVisible] = useState(true);
+  const handleGenerate = () => {
+    setError('');
+    
+    if (!url.trim()) {
+      setError('Please enter a URL');
+      return;
+    }
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIsVisible(false);
-      setTimeout(() => {
-        setCurrentIndex((prev) => (prev + 1) % slogans.length);
-        setIsVisible(true);
-      }, 400);
-    }, 2800);
+    try {
+      const qr = generateQRCode(url, ErrorCorrectionLevel.M);
+      const svg = qr.toSVG(8, 4);
+      const png = qr.toPNG(8, 4);
+      
+      setQrSvg(svg);
+      setQrPng(png);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate QR code');
+    }
+  };
 
-    return () => clearInterval(interval);
-  }, []);
+  const handleDownload = () => {
+    if (format === 'svg' && qrSvg) {
+      const blob = new Blob([qrSvg], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'qrcode.svg';
+      a.click();
+      URL.revokeObjectURL(url);
+    } else if (format === 'png' && qrPng) {
+      const a = document.createElement('a');
+      a.href = qrPng;
+      a.download = 'qrcode.png';
+      a.click();
+    }
+  };
 
   return (
-    <div className="relative h-[100dvh] w-full overflow-hidden bg-black text-white">
-      {/* Enhanced animated aurora background layers */}
-      <div className="absolute inset-0 bg-aurora-layer-1" />
-      <div className="absolute inset-0 bg-aurora-layer-2" />
-      <div className="absolute inset-0 bg-aurora-layer-3" />
-      
-      {/* Floating particles overlay */}
-      <div className="absolute inset-0 bg-particles" />
-      
-      {/* Main content - centered */}
-      <main className="relative z-10 h-full flex flex-col items-center justify-center px-6">
-        <h1 className="text-center text-[clamp(28px,6vw,64px)] font-medium tracking-tight mb-4">
-          Turn Chats into Apps
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white p-8">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-5xl font-bold text-center mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+          QR Code Generator
         </h1>
-        
-        {/* Rotating slogans */}
-        <div className="mt-4 h-8 md:h-10 overflow-hidden flex items-center justify-center">
-          <span
-            className={`inline-block text-center text-[clamp(18px,3vw,32px)] font-light transition-all duration-[400ms] ease-in-out ${
-              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
-            }`}
-          >
-            {slogans[currentIndex]}
-          </span>
+        <p className="text-center text-slate-300 mb-12">
+          Generate QR codes from URLs - Zero dependencies, 100% client-side
+        </p>
+
+        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-2xl border border-white/20">
+          <div className="space-y-6">
+            {/* URL Input */}
+            <div>
+              <label htmlFor="url" className="block text-sm font-medium mb-2">
+                Enter URL
+              </label>
+              <input
+                id="url"
+                type="text"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleGenerate()}
+                placeholder="https://example.com"
+                className="w-full px-4 py-3 bg-white/5 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white placeholder-slate-400"
+              />
+            </div>
+
+            {/* Format Selection */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Output Format
+              </label>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => setFormat('svg')}
+                  className={`px-6 py-2 rounded-lg font-medium transition-all ${
+                    format === 'svg'
+                      ? 'bg-purple-600 text-white shadow-lg'
+                      : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                  }`}
+                >
+                  SVG
+                </button>
+                <button
+                  onClick={() => setFormat('png')}
+                  className={`px-6 py-2 rounded-lg font-medium transition-all ${
+                    format === 'png'
+                      ? 'bg-purple-600 text-white shadow-lg'
+                      : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                  }`}
+                >
+                  PNG
+                </button>
+              </div>
+            </div>
+
+            {/* Generate Button */}
+            <button
+              onClick={handleGenerate}
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 px-6 rounded-lg transition-all shadow-lg hover:shadow-xl"
+            >
+              Generate QR Code
+            </button>
+
+            {/* Error Message */}
+            {error && (
+              <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 text-red-200">
+                {error}
+              </div>
+            )}
+
+            {/* QR Code Display */}
+            {(qrSvg || qrPng) && (
+              <div className="mt-8 space-y-4">
+                <div className="bg-white rounded-xl p-8 flex items-center justify-center">
+                  {format === 'svg' && qrSvg && (
+                    <div dangerouslySetInnerHTML={{ __html: qrSvg }} />
+                  )}
+                  {format === 'png' && qrPng && (
+                    <img src={qrPng} alt="QR Code" className="max-w-full" />
+                  )}
+                </div>
+
+                <button
+                  onClick={handleDownload}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-all shadow-lg hover:shadow-xl"
+                >
+                  Download {format.toUpperCase()}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      </main>
-      
-      {/* Start Prompting arrow pointing left - bottom left */}
-      <div className="absolute left-6 md:left-8 bottom-[5%] z-20 flex items-center gap-3 arrow-point-left">
-        <div className="flex items-center gap-2 text-white/80 font-medium text-sm md:text-base">
-          <svg 
-            className="w-5 h-5 md:w-6 md:h-6 animate-bounce-horizontal" 
-            fill="none" 
-            viewBox="0 0 24 24" 
-            stroke="currentColor"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          <span>Start prompting</span>
+
+        {/* Features */}
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white/5 backdrop-blur rounded-xl p-6 border border-white/10">
+            <div className="text-3xl mb-3">🚀</div>
+            <h3 className="font-semibold mb-2">Zero Dependencies</h3>
+            <p className="text-sm text-slate-300">
+              Pure TypeScript implementation with no external libraries
+            </p>
+          </div>
+          <div className="bg-white/5 backdrop-blur rounded-xl p-6 border border-white/10">
+            <div className="text-3xl mb-3">🔒</div>
+            <h3 className="font-semibold mb-2">100% Client-Side</h3>
+            <p className="text-sm text-slate-300">
+              No API calls, all processing happens in your browser
+            </p>
+          </div>
+          <div className="bg-white/5 backdrop-blur rounded-xl p-6 border border-white/10">
+            <div className="text-3xl mb-3">📦</div>
+            <h3 className="font-semibold mb-2">Multiple Formats</h3>
+            <p className="text-sm text-slate-300">
+              Export as SVG or PNG with customizable sizes
+            </p>
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
